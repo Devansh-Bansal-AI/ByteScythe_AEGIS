@@ -5,6 +5,7 @@ __pycache__/
 *.pyd
 *.env
 .env
+.aegis
 
 # ML model artifact (large binary)
 data/processed/isolation_forest.joblib
