@@ -12,8 +12,8 @@ app = FastAPI(title="AEGIS Defense Console API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://aegis-frontend-kyat.onrender.com","http://localhost:5173"],
-    allow_credentials=False,
+    allow_origins=["https://aegis-frontend-navy.vercel.app/","http://localhost:5173"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
