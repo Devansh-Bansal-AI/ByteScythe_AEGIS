@@ -2,15 +2,13 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# requirements.txt lives inside backend/ in your repo
-COPY backend/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend as a package (imports use 'from backend.xxx')
 COPY backend/ ./backend/
 
-# Copy data files
-COPY data/ ./data/
+# Create data dir safely (git doesn't track empty folders)
+RUN mkdir -p data
 
 EXPOSE 10000
 
