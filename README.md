@@ -196,13 +196,14 @@ uvicorn main:app --reload
 
 **5. Serve the frontend** *(in a new terminal)*
 ```bash
-cd ../frontend
-python -m http.server 8080
+cd ../frontend-react
+npm install
+npm run dev
 ```
 
 **6. Open the dashboard**
 ```
-http://localhost:8080
+[http://localhost:8080](http://localhost:5173)
 ```
 
 ---
