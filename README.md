@@ -26,6 +26,12 @@
 
 ---
 
+### 🎥 **Explainable Video Walkthrough**
+
+Get a deeper understanding of how AEGIS identifies and disrupts covert command & control infrastructure:
+
+👉 [Watch the Explainable Video](https://drive.google.com/file/d/1XATz-LuFPdrUUJPXigW2dkTqtwY9mmkj/view?usp=drivesdk)
+
 <br/>
 
 ### **Detect Command & Control Infrastructure Before It Strikes**
@@ -33,6 +39,7 @@
 AEGIS transforms raw network telemetry into **actionable threat intelligence** using graph analytics, temporal fingerprinting, and machine learning — exposing hidden C2 channels that evade traditional detection.
 
 <br/>
+
 
 </div>
 
