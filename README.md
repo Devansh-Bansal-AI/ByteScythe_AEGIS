@@ -24,18 +24,9 @@
 
 <br/>
 
-[🚀 Live Demo](#-live-demo) •
-[📖 Documentation](#-documentation) •
-[⚡ Quick Start](#-quick-start) •
-[🏗️ Architecture](#%EF%B8%8F-system-architecture)
-
-<br/>
-
 ---
 
 <br/>
-
-<img src="https://raw.githubusercontent.com/github/explore/main/topics/security/security.png" width="120" alt="Security"/>
 
 ### **Detect Command & Control Infrastructure Before It Strikes**
 
@@ -46,16 +37,6 @@ AEGIS transforms raw network telemetry into **actionable threat intelligence** u
 </div>
 
 ---
-
-## 🎬 Live Demo
-
-<div align="center">
-
-| 🌐 **Demo Link** | 📄 **Documentation** | 📊 **Report** |
-|:---:|:---:|:---:|
-| [**Launch AEGIS Dashboard →**](https://your-demo-link.vercel.app) | [View Full Docs](./docs/) | [Project Report](https://docs.google.com/document/d/1lpRayJaaRv436C8fP0GrqL8-LCs9SOcPO_gbq3K41OQ) |
-
-</div>
 
 <br/>
 
@@ -592,9 +573,5 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 **AEGIS** — *Detect. Attribute. Defend.*
 
-<br/>
-
-[![GitHub stars](https://img.shields.io/github/stars/your-username/aegis-console?style=social)](https://github.com/your-username/aegis-console)
-[![Twitter Follow](https://img.shields.io/twitter/follow/your-handle?style=social)](https://twitter.com/your-handle)
 
 </div>
