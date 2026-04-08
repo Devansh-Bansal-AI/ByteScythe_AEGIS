@@ -1,8 +1,8 @@
 """SQLite database connection and initialization for AEGIS Active Attribution Engine."""
 
 import sqlite3
-import backend.config as config
-from backend.db.models import ALL_TABLES, ALL_INDEXES
+import config as config
+from db.models import ALL_TABLES, ALL_INDEXES
 
 
 def get_db() -> sqlite3.Connection:
