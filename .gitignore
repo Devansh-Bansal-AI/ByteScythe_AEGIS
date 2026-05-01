@@ -10,6 +10,7 @@ __pycache__/
 .venv/
 venv/
 env/
+aegis/
 backend/__pycache__/
 backend/api/__pycache__/
 backend/db/__pycache__/
