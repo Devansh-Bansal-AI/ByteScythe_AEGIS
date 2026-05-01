@@ -24,6 +24,7 @@ def test_db():
     original_db_path = DB_PATH
     import backend.config
     backend.config.DB_PATH = temp_db_path
+    backend.config.Config.DB_PATH = temp_db_path
 
     # Initialize the test database
     init_db()
@@ -64,6 +65,7 @@ def test_db():
 
     # Cleanup
     backend.config.DB_PATH = original_db_path
+    backend.config.Config.DB_PATH = original_db_path
     temp_db_path.unlink(missing_ok=True)
 
 

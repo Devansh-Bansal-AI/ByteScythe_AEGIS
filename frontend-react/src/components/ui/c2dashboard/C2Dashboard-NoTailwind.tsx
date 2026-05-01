@@ -155,9 +155,8 @@ export function C2Dashboard({ scale = 1.5 }: { scale?: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [dataSource, setDataSource] = useState<'live' | 'mock'>('live');
-  const [error, setError] = useState<string | null>(null);
 
-  const { setNodes, setLinks, reset, isLoading } = useThreatStore();
+  const { setNodes, setLinks, reset } = useThreatStore();
 
   // Responsive sizing
   useEffect(() => {
@@ -179,7 +178,7 @@ export function C2Dashboard({ scale = 1.5 }: { scale?: number }) {
   // Fetch LIVE data from the Attribution Engine API
   const fetchLiveData = useCallback(async () => {
     try {
-      setError(null);
+      // Reset state for fresh fetch
       const resp = await fetch(`${API_BASE}/v1/graph/active-threats?min_score=0&max_nodes=500`);
 
       if (!resp.ok) {
@@ -201,7 +200,7 @@ export function C2Dashboard({ scale = 1.5 }: { scale?: number }) {
       console.log(`[AEGIS] Loaded ${nodes.length} LIVE nodes from Attribution Engine`);
     } catch (err: any) {
       console.warn(`[AEGIS] Live API unavailable (${err.message}), falling back to mock data`);
-      setError(err.message);
+      // Log error — fallback to mock data below
       generateFallbackData();
     }
   }, [setNodes, setLinks]);
