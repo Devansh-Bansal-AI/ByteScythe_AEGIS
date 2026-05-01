@@ -11,6 +11,9 @@ python-dotenv==1.0.0
 # Attribution Engine dependencies
 networkx==3.2.1
 
+# Message Bus (optional — for Redis Streams)
+# redis[hiredis]==5.0.1
+
 # Testing dependencies
 pytest==7.4.3
 pytest-asyncio==0.21.1

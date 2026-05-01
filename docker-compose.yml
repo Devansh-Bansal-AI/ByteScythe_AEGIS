@@ -1,0 +1,61 @@
+# AEGIS Active Attribution Engine — Full Stack Deployment
+# Usage: docker-compose up --build
+
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aegis-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - AEGIS_ENV=production
+      - AEGIS_HOST=0.0.0.0
+      - AEGIS_PORT=8000
+      - AEGIS_LOG_LEVEL=INFO
+      - AEGIS_DB_PATH=/app/data/aegis.db
+      - AEGIS_API_KEY=${AEGIS_API_KEY:-}
+      - AEGIS_JWT_SECRET=${AEGIS_JWT_SECRET:-}
+      - AEGIS_REDIS_URL=${AEGIS_REDIS_URL:-}
+      - AEGIS_SOAR_DRY_RUN=${AEGIS_SOAR_DRY_RUN:-true}
+      - AEGIS_AUTO_QUARANTINE_THRESHOLD=90
+    volumes:
+      - aegis-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend-react
+      dockerfile: Dockerfile
+    container_name: aegis-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Optional: Redis for durable message passing (Phase 2)
+  redis:
+    image: redis:7-alpine
+    container_name: aegis-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    profiles:
+      - redis  # Only starts with: docker-compose --profile redis up
+    restart: unless-stopped
+
+volumes:
+  aegis-data:
+  redis-data:

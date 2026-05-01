@@ -1,13 +1,11 @@
 """
-AEGIS Active Attribution Engine — Application Entry Point (v2.1)
+AEGIS Active Attribution Engine — Application Entry Point (v3.0)
 
-Changes from v2.0:
-- Added authentication middleware (API key)
-- Added rate limiting middleware (token bucket)
-- Added request tracing middleware (correlation IDs)
-- Fixed CORS trailing slash on Vercel URL
-- Removed legacy AEGISThreatModel preload (dead weight)
-- Added structured JSON logging
+Full Enterprise Stack:
+- Phase 1: API key auth, rate limiting, request tracing
+- Phase 2: ETag caching, Prometheus metrics, score persistence
+- Phase 3: JWT RBAC, MITRE ATT&CK mapping
+- Phase 4: SOAR automation, case management, NLQ, threat intel
 """
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -15,11 +13,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from backend.api.routes import router
 from backend.api.graph_routes import router as graph_router
+from backend.api.enterprise_routes import router as enterprise_router
 from backend.db.database import init_db
+from backend.db.score_persistence import ScorePersistence
 from backend.services.pipeline import stream_telemetry
 from backend.services.async_pipeline import start_pipeline, stop_pipeline
 from backend.middleware.auth import APIKeyAuthMiddleware
 from backend.middleware.rate_limit import RateLimitMiddleware
+from backend.middleware.rbac import RBACMiddleware
+from backend.middleware.etag_cache import ETagCacheMiddleware
 from backend.middleware.logging import RequestTracingMiddleware, configure_structured_logging
 import logging
 import os
@@ -37,17 +39,32 @@ async def lifespan(app: FastAPI):
     Handles startup and shutdown events for the Attribution Engine.
     """
     # STARTUP
-    logger.info("🛡️ AEGIS Active Attribution Engine v2.1 — Initialization Sequence")
+    logger.info("🛡️ AEGIS Active Attribution Engine v3.0 — Initialization Sequence")
 
     # Initialize database with new schema
     init_db()
     logger.info("✅ Database initialized with Attribution Engine schema")
 
+    # Initialize Phase 2-4 tables (score persistence, cases, SOAR, threat intel)
+    from backend.config import Config
+    ScorePersistence(str(Config.DB_PATH))
+    logger.info("✅ Phase 2-4 database tables initialized")
+
+    # Initialize SOAR engine
+    from backend.engine.soar import get_soar_engine
+    get_soar_engine()
+    logger.info("✅ SOAR engine initialized (dry_run=" + os.getenv('AEGIS_SOAR_DRY_RUN', 'true') + ")")
+
+    # Initialize threat intel feed
+    from backend.engine.threat_intel import get_threat_intel
+    feed = get_threat_intel()
+    logger.info(f"✅ Threat intel feed loaded ({feed.get_stats()['total_indicators']} indicators)")
+
     # Start async processing pipeline
     await start_pipeline()
     logger.info("✅ Async processing pipeline started")
 
-    logger.info("🚀 AEGIS Active Attribution Engine online and operational")
+    logger.info("🚀 AEGIS Active Attribution Engine v3.0 online and operational")
 
     yield
 
@@ -59,8 +76,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="AEGIS Active Attribution Engine API",
-    description="Enterprise-grade C2 detection with graph + temporal intelligence",
-    version="2.1.0",
+    description="Enterprise-grade C2 detection with graph analytics, temporal fingerprinting, MITRE ATT&CK mapping, SOAR automation, and natural language querying",
+    version="3.0.0",
     lifespan=lifespan
 )
 
@@ -68,13 +85,19 @@ app = FastAPI(
 # 1. Request tracing (correlation IDs, latency)
 app.add_middleware(RequestTracingMiddleware)
 
-# 2. Rate limiting (token bucket per IP)
+# 2. ETag caching (Phase 2 — 304 Not Modified for unchanged data)
+app.add_middleware(ETagCacheMiddleware)
+
+# 3. Rate limiting (token bucket per IP)
 app.add_middleware(RateLimitMiddleware)
 
-# 3. Authentication (API key)
+# 4. RBAC (Phase 3 — JWT role-based access)
+app.add_middleware(RBACMiddleware)
+
+# 5. Authentication (API key — Phase 1 fallback)
 app.add_middleware(APIKeyAuthMiddleware)
 
-# 4. CORS (fixed: removed trailing slash from Vercel URL)
+# 6. CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -86,15 +109,18 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Request-ID", "X-Response-Time"],
+    expose_headers=["X-Request-ID", "X-Response-Time", "ETag"],
 )
 
 # ── Routes ──
 # Legacy routes
 app.include_router(router, prefix="/api")
 
-# Attribution Engine routes
+# Attribution Engine routes (Phase 1)
 app.include_router(graph_router, prefix="/api")
+
+# Enterprise routes (Phase 2-4: metrics, MITRE, SOAR, cases, NLQ, threat intel)
+app.include_router(enterprise_router)
 
 
 @app.get("/")
@@ -108,19 +134,31 @@ def health_check():
     temporal = get_temporal_engine()
     headers = get_header_engine()
 
+    from backend.engine.soar import get_soar_engine
+    from backend.engine.threat_intel import get_threat_intel
+    soar = get_soar_engine()
+    intel = get_threat_intel()
+
     return {
         "status": "AEGIS Active Attribution Engine is ONLINE",
-        "version": "2.1.0",
+        "version": "3.0.0",
         "capabilities": [
             "graph_analytics",
             "temporal_fingerprinting",
             "header_fingerprinting",
             "c2_attribution",
+            "mitre_attack_mapping",
+            "soar_automation",
+            "case_management",
+            "natural_language_query",
+            "threat_intel_feeds",
         ],
         "engines": {
             "graph": {"nodes": len(graph.graph), "edges": graph.graph.number_of_edges()},
             "temporal": {"tracked_nodes": len(temporal._timestamps)},
             "headers": {"markov_trained": headers._markov.is_trained},
+            "soar": soar.get_stats(),
+            "threat_intel": intel.get_stats(),
         },
     }
 
