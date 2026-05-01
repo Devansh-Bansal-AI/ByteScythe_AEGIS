@@ -1,13 +1,22 @@
 """SQLite database connection and initialization for AEGIS Active Attribution Engine."""
 
 import sqlite3
-import config as config
-from db.models import ALL_TABLES, ALL_INDEXES
+import os
+from pathlib import Path
+
+# Support both `python -m backend.db.database` and direct execution
+try:
+    from backend.config import Config
+    from backend.db.models import ALL_TABLES, ALL_INDEXES
+except ImportError:
+    import config as _cfg
+    Config = _cfg.Config
+    from db.models import ALL_TABLES, ALL_INDEXES
 
 
 def get_db() -> sqlite3.Connection:
     """Returns a new SQLite connection with Row factory for dict-like access."""
-    conn = sqlite3.connect(str(config.DB_PATH))
+    conn = sqlite3.connect(str(Config.DB_PATH))
     conn.row_factory = sqlite3.Row
     # Enable WAL mode for concurrent reads during heavy writes
     conn.execute("PRAGMA journal_mode=WAL")

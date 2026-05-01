@@ -1,0 +1,78 @@
+name: AEGIS CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-tests:
+    name: Backend Tests (Python)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        working-directory: .
+        run: |
+          python -m pytest tests/ -v --tb=short -x
+        env:
+          PYTHONPATH: .
+
+  frontend-build:
+    name: Frontend Build (TypeScript)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend-react/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend-react
+        run: npm ci --prefer-offline || npm install
+
+      - name: TypeScript build check
+        working-directory: ./frontend-react
+        run: npm run build
+
+  security-lint:
+    name: Security Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for secrets in code
+        run: |
+          # Fail if any .env files (not .env.example) are committed
+          if find . -name ".env" -not -name ".env.example" -not -path "./.git/*" | grep -q .; then
+            echo "ERROR: .env file found in repository!"
+            exit 1
+          fi
+          echo "No secrets detected."
+
+      - name: Verify .gitignore covers critical patterns
+        run: |
+          grep -q "*.env" .gitignore || grep -q ".env" .gitignore
+          echo ".gitignore covers .env files ✓"

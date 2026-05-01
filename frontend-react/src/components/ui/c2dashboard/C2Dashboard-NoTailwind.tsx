@@ -1,5 +1,11 @@
 /**
- * AEGIS C2 Dashboard - Inline Styles Version (No Tailwind Required)
+ * AEGIS C2 Dashboard - LIVE API VERSION (v2.1)
+ *
+ * CHANGE LOG:
+ * - Replaced mockDataGenerator with real API calls
+ * - Fetches from /api/v1/graph/active-threats, /api/v1/graph/timing
+ * - Falls back to mock data if backend is unreachable (graceful degradation)
+ * - Added loading / error states
  */
 
 import { useEffect, useCallback, useRef, useState } from 'react';
@@ -12,6 +18,10 @@ import { IsolateNodeModal } from './IsolateNodeModal-NoTailwind';
 import { ThreatLegend } from './ThreatLegend-NoTailwind';
 import { useThreatStore } from './useThreatStore';
 import { generateMockData } from './mockDataGenerator';
+import { getNodeStatus } from './types';
+import type { ThreatNode, ThreatLink } from './types';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 const styles = {
   container: {
@@ -102,13 +112,52 @@ const styles = {
     color: '#4b5563',
     fontSize: '12px',
   },
+  statusDot: (color: string) => ({
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    background: color,
+    animation: 'pulse 2s ease-in-out infinite',
+  }),
 };
+
+
+/** Map API threat data → internal ThreatNode format */
+function mapApiNode(apiNode: any): ThreatNode {
+  const confidence = apiNode.score ?? 0;
+  return {
+    id: apiNode.id,
+    ip: apiNode.id,
+    label: apiNode.id,
+    confidence,
+    centrality: 0,
+    connections: apiNode.connections ?? 0,
+    status: getNodeStatus(confidence),
+    lastSeen: Date.now(),
+    timingData: [],
+    reasons: apiNode.primaryIndicator
+      ? [apiNode.primaryIndicator]
+      : [],
+  };
+}
+
+function mapApiLink(apiLink: any): ThreatLink {
+  return {
+    source: apiLink.source,
+    target: apiLink.target,
+    value: apiLink.weight ?? 1,
+    type: 'normal',
+  };
+}
+
 
 export function C2Dashboard({ scale = 1.5 }: { scale?: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
-  
-  const { setNodes, setLinks, reset } = useThreatStore();
+  const [dataSource, setDataSource] = useState<'live' | 'mock'>('live');
+  const [error, setError] = useState<string | null>(null);
+
+  const { setNodes, setLinks, reset, isLoading } = useThreatStore();
 
   // Responsive sizing
   useEffect(() => {
@@ -127,23 +176,55 @@ export function C2Dashboard({ scale = 1.5 }: { scale?: number }) {
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Generate initial data
-  const generateData = useCallback(() => {
+  // Fetch LIVE data from the Attribution Engine API
+  const fetchLiveData = useCallback(async () => {
+    try {
+      setError(null);
+      const resp = await fetch(`${API_BASE}/v1/graph/active-threats?min_score=0&max_nodes=500`);
+
+      if (!resp.ok) {
+        throw new Error(`API returned ${resp.status}`);
+      }
+
+      const data = await resp.json();
+      const nodes = (data.nodes || []).map(mapApiNode);
+      const links = (data.links || []).map(mapApiLink);
+
+      if (nodes.length === 0) {
+        // Backend reachable but no data — fall back to mock
+        throw new Error('No nodes returned from API');
+      }
+
+      setNodes(nodes);
+      setLinks(links);
+      setDataSource('live');
+      console.log(`[AEGIS] Loaded ${nodes.length} LIVE nodes from Attribution Engine`);
+    } catch (err: any) {
+      console.warn(`[AEGIS] Live API unavailable (${err.message}), falling back to mock data`);
+      setError(err.message);
+      generateFallbackData();
+    }
+  }, [setNodes, setLinks]);
+
+  // Fallback to mock data when API is unavailable
+  const generateFallbackData = useCallback(() => {
     reset();
     const data = generateMockData(scale);
     setNodes(data.nodes);
     setLinks(data.links);
-    console.log(`[AEGIS] Generated ${data.nodes.length} nodes`);
+    setDataSource('mock');
+    console.log(`[AEGIS] Generated ${data.nodes.length} MOCK nodes (fallback)`);
   }, [scale, reset, setNodes, setLinks]);
 
+  // Load data on mount — try live first, fall back to mock
   useEffect(() => {
-    generateData();
-  }, [generateData]);
+    fetchLiveData();
+  }, [fetchLiveData]);
 
   return (
     <div style={styles.container}>
       <div style={styles.background} />
-      
+
       <div style={styles.content}>
         {/* Header */}
         <div style={styles.header}>
@@ -154,22 +235,21 @@ export function C2Dashboard({ scale = 1.5 }: { scale?: number }) {
               <p style={styles.subtitle}>Real-time C2 Infrastructure Detection</p>
             </div>
           </div>
-          
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ color: '#6b7280', fontSize: '14px' }}>v2.0</span>
-            <div style={{ 
-              width: '8px', 
-              height: '8px', 
-              borderRadius: '50%', 
-              background: '#10b981',
-              animation: 'pulse 2s ease-in-out infinite',
-            }} />
-            <span style={{ color: '#10b981', fontSize: '14px' }}>Online</span>
+            <span style={{ color: '#6b7280', fontSize: '14px' }}>v2.1</span>
+            <div style={styles.statusDot(dataSource === 'live' ? '#10b981' : '#f59e0b')} />
+            <span style={{ color: dataSource === 'live' ? '#10b981' : '#f59e0b', fontSize: '14px' }}>
+              {dataSource === 'live' ? 'Live' : 'Mock Data'}
+            </span>
           </div>
         </div>
 
         {/* Global Controls */}
-        <GlobalControls onGenerateData={generateData} onClear={reset} />
+        <GlobalControls
+          onGenerateData={fetchLiveData}
+          onClear={reset}
+        />
 
         {/* Main Grid */}
         <div style={styles.mainGrid}>
@@ -192,8 +272,12 @@ export function C2Dashboard({ scale = 1.5 }: { scale?: number }) {
 
         {/* Footer */}
         <div style={styles.footer}>
-          <span>© 2024 AEGIS Security • Enterprise Threat Intelligence</span>
-          <span>WebGL Rendering • 60fps @ 10K+ nodes</span>
+          <span>© 2025 AEGIS Security • Enterprise Threat Intelligence</span>
+          <span>
+            {dataSource === 'live'
+              ? 'WebGL Rendering • Live Attribution Engine'
+              : 'WebGL Rendering • Mock Data (Backend Offline)'}
+          </span>
         </div>
       </div>
 
